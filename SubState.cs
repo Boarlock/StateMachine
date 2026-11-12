@@ -1,103 +1,39 @@
 ﻿
 namespace SMachine
 {
-    public class SubState : State {
+    public sealed class SubState : State {
         internal SubState(
             StateMachine machine,
             State parent,
-            bool Propagation = true)
+            bool propagation = true)
             : base(machine) {
 
             Parent = parent;
-            UpdatePropagation = Propagation;
+            UpdatePropagation = propagation;
         }
 
         public State Parent { get; }
-        public bool UpdatePropagation { get; protected set; }
+        public bool UpdatePropagation { get; }
+        private protected override bool PropagatesUpdate => UpdatePropagation;
 
         public event Action<BaseContext>? OnIndependentUpdateContext;
         public event Action? OnIndependentUpdate;
 
-        internal override void Update(BaseContext data) {
+        private protected override void RaiseUpdate(
+            BaseContext? data, 
+            bool independent) {
 
-            isProcessingLifecycle = true;
+            if (independent) {
 
-            try
-            {
-                if (Enabled)
-                    InvokeContextUpdate(data);
-
-                if (UpdatePropagation)
-                    CurrentSub?.Update(data);
-            }
-            finally
-            {
-                isProcessingLifecycle = false;
-            }
-
-            ProcessTransitions();
-        }
-
-        internal override void Update() {
-
-            isProcessingLifecycle = true;
-
-            try
-            {
-                if (Enabled)
-                    InvokeUpdate();
-
-                if (UpdatePropagation)
-                    CurrentSub?.Update();
-            }
-            finally
-            {
-                isProcessingLifecycle = false;
-            }
-
-            ProcessTransitions();
-        }
-
-        internal void UpdateIndependent(BaseContext data) {
-
-            isProcessingLifecycle = true;
-
-            try
-            {
-                if (Enabled)
-                    OnIndependentUpdateContext?.Invoke(data);
-
-                if (CurrentSub is not null &&
-                    CurrentSub.UpdatePropagation)
-                    CurrentSub.Update(data);
-            }
-            finally
-            {
-                isProcessingLifecycle = false;
-            }
-
-            ProcessTransitions();
-        }
-
-        internal void UpdateIndependent() {
-
-            isProcessingLifecycle = true;
-
-            try
-            {
-                if (Enabled)
+                if (data is null) 
                     OnIndependentUpdate?.Invoke();
-
-                if (CurrentSub is not null &&
-                    CurrentSub.UpdatePropagation)
-                    CurrentSub.Update();
+                else 
+                    OnIndependentUpdateContext?.Invoke(data);
             }
-            finally
-            {
-                isProcessingLifecycle = false;
-            }
+            else {
 
-            ProcessTransitions();
+                base.RaiseUpdate(data, independent);
+            }
         }
     }
 }
